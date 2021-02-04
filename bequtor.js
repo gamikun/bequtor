@@ -7,8 +7,7 @@
     e.addEventListener('mouseup', (event) => {
       const x = event.clientX - e.offsetLeft;
       const y = event.clientY - e.offsetTop;
-      
-      alert(this.hitTest(x, y));
+      this.hitTest(x, y);
     });
   }
 
@@ -26,12 +25,14 @@
     this.style = new Style();
   }
 
-  function Circle() {
-    this.width = 100;
-    this.height = 100;
-    this.x = 0;
-    this.y = 0;
+  function Circle(x, y, radius) {
+    this.width = 0;
+    this.height = 0;
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
     this.style = new Style();
+    this.style.fillColor = "white";
   }
 
   function Style() {
@@ -114,8 +115,32 @@
     return false;
   };
 
-  Circle.prototype.draw = function() {};
-  Circle.prototype.hitTest = function(x, y) {};
+  Circle.prototype.draw = function(context) {
+    context.fillStyle = this.style.fillColor;
+    context.strokeStyle = this.style.strokeColor;
+    context.lineWidth = this.style.lineWidth;
+
+    context.arc(
+      this.x,
+      this.y,
+      this.radius,
+      0,
+      Math.PI * 2
+    );
+    context.fill();
+  };
+  Circle.prototype.hitTest = function(x, y) {
+    const dx = Math.abs(this.x - x);
+    const dy = Math.abs(this.y - y);
+    const hypo = Math.hypot(dx, dy);
+    const didHit = hypo < this.radius;
+
+    if (didHit) {
+      console.log("HIT");
+    }
+
+    return didHit;
+  };
 
   const rectA = new Rectangle(100, 100, 150, 200);
   const rectB = new Rectangle(250, 250, 50, 50);
@@ -129,6 +154,7 @@
   layer.addElement(rectA);
   layer.addElement(rectB);
   layer.addElement(rectC);
+  layer.addElement(new Circle(400, 400, 60))
 
   const board = new Board();
   board.addLayer(layer);
