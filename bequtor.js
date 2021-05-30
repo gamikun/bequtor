@@ -3,12 +3,55 @@
     const e = document.createElement('div');
     this.layers = [];
     this.element = e;
+    this.isDown = false;
+    this.downOffset = [0, 0];
+    this.current = [];
 
     e.addEventListener('mouseup', (event) => {
       const x = event.clientX - e.offsetLeft;
       const y = event.clientY - e.offsetTop;
-      this.hitTest(x, y);
+      this.current.splice(0, this.current.length);
+      this.isDown = false;
     });
+
+    e.addEventListener('mousedown', (event) => {
+      const x = event.clientX - e.offsetLeft;
+      const y = event.clientY - e.offsetTop;
+      const hit = this.hitTest(x, y);
+
+      if (this.current.length === 0) {
+        if (hit.element) {
+          this.current.push(hit.element);
+          this.downOffset = hit.positionInElement;
+        }
+      }
+
+      this.isDown = true;
+    });
+
+    e.addEventListener('mousemove', (event) => {
+      const x = event.clientX - e.offsetLeft;
+      const y = event.clientY - e.offsetTop;
+
+      if (this.isDown) {
+        if (this.current.length > 0) {
+          this.current.forEach(e => {
+            const [rx, ry] = this.downOffset;
+            e.x = x - rx;
+            e.y = y - ry;
+          });
+        }
+      }
+
+      this.clear();
+      this.draw();
+    })
+  }
+
+  function Hit() {
+    this.layer = null;
+    this.element = null;
+    this.positionInElement = null;
   }
 
   function Layer() {
@@ -47,6 +90,12 @@
     });
   };
 
+  Board.prototype.clear = function() {
+    this.layers.forEach((layer) => {
+      layer.clear();
+    });
+  };
+
   Board.prototype.addLayer = function(layer) {
     this.layers.push(layer);
     this.element.appendChild(layer.canvas);
@@ -64,8 +113,9 @@
   Board.prototype.hitTest = function(x, y) {
     const lyrs = this.layers;
     for (let idx = 0; idx < lyrs.length; idx++) {
-      if (lyrs[idx].hitTest(x, y)) {
-        return true;
+      const hit = lyrs[idx].hitTest(x, y);
+      if (hit) {
+        return hit;
       }
     }
     return false;
@@ -77,6 +127,14 @@
     });
   };
 
+  Layer.prototype.clear = function() {
+    this.context.clearRect(
+      0, 0,
+      this.canvas.width,
+      this.canvas.height
+    );
+  };
+
   Layer.prototype.addElement = function(e) {
     this.elements.push(e);
   };
@@ -84,8 +142,10 @@
   Layer.prototype.hitTest = function(x, y) {
     const elm = this.elements;
     for (let idx = 0; idx < elm.length; idx++) {
-      if (elm[idx].hitTest(x, y)) {
-        return true;
+      const hit = elm[idx].hitTest(x, y);
+      if (hit) {
+        hit.layer = this;
+        return hit;
       }
     }
 
@@ -109,7 +169,13 @@
       && x <= (this.x + this.width)
       && y <= (this.y + this.height)
     ) {
-      return true;
+      const hit = new Hit();
+      hit.element = this;
+      hit.positionInElement = [
+        x - this.x,
+        y - this.y
+      ];
+      return hit;
     }
 
     return false;
@@ -120,6 +186,7 @@
     context.strokeStyle = this.style.strokeColor;
     context.lineWidth = this.style.lineWidth;
 
+    context.beginPath();
     context.arc(
       this.x,
       this.y,
@@ -127,6 +194,7 @@
       0,
       Math.PI * 2
     );
+    context.closePath();
     context.fill();
   };
   Circle.prototype.hitTest = function(x, y) {
@@ -136,7 +204,14 @@
     const didHit = hypo < this.radius;
 
     if (didHit) {
-      console.log("HIT");
+      const hit = new Hit();
+      hit.element = this;
+      hit.positionInElement = [
+        x - this.x,
+        y - this.y
+      ];
+
+      return hit;
     }
 
     return didHit;
